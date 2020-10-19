@@ -6,10 +6,12 @@ namespace MazeKz
 {
     class ConsoleUiHelper
     {
+        public Maze Maze { get; set; }
+
         public void Play()
         {
             var mazeGenerator = new MazeGenerator();
-            var maze = mazeGenerator.GenerateSmartByAnton(61, 31);
+            this.Maze = mazeGenerator.GenerateSmartByAnton(31, 17);
             // Варинат Павла: var maze = mazeGenerator.GenerateSmart(15, 12);
 
             var draw = new Drawer();
@@ -17,26 +19,26 @@ namespace MazeKz
             var continuePlay = true;
             while (continuePlay)
             {
-                draw.DrawMaze(maze);
+                draw.DrawMaze(this.Maze);
 
                 var key = Console.ReadKey();
                 switch (key.Key)
                 {
                     case ConsoleKey.UpArrow:
                     case ConsoleKey.W:
-                        maze.TryToStep(Direction.Up);
+                        this.Maze.TryToStep(Direction.Up);
                         break;
                     case ConsoleKey.DownArrow:
                     case ConsoleKey.S:
-                        maze.TryToStep(Direction.Down);
+                        this.Maze.TryToStep(Direction.Down);
                         break;
                     case ConsoleKey.LeftArrow:
                     case ConsoleKey.A:
-                        maze.TryToStep(Direction.Left);
+                        this.Maze.TryToStep(Direction.Left);
                         break;
                     case ConsoleKey.RightArrow:
                     case ConsoleKey.D:
-                        maze.TryToStep(Direction.Right);
+                        this.Maze.TryToStep(Direction.Right);
                         break;
                     case ConsoleKey.Escape:
                         continuePlay = false;

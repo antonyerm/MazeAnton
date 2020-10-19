@@ -10,6 +10,7 @@ namespace MazeKz.Cells
 
         public Hero(int x, int y, Maze maze) : base(x, y, maze)
         {
+            this.Money = 0;
         }
 
         public override bool IsStepAllowed()

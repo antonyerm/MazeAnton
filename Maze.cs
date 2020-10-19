@@ -25,6 +25,7 @@ namespace MazeKz
 
         public int Height { get; set; }
 
+        public ConsoleColor Color { get; set; }
         public Hero Hero { get; set; }
 
         public CellBase this[int x, int y]
@@ -47,6 +48,7 @@ namespace MazeKz
         public Maze()
         {
             Cells = new List<CellBase>();
+            this.Color = ConsoleColor.Gray;
         }
 
         public void TryToStep(Direction Direction)

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http.Headers;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
@@ -26,20 +27,9 @@ namespace MazeKz
 
             _maze.Hero = new Hero(0, 0, _maze);
 
-            this.GenerateCoin();
+            this.Generate<Coin>(10);
 
             return _maze;
-        }
-
-        private void GenerateCoin()
-        {
-            var groundCells = _maze.Cells.OfType<Ground>().ToList();
-            for (int i = 0; i < 10; i++)
-            {
-                var randomGround = GetRandomCell(groundCells);
-                var coin = new Coin(randomGround.X, randomGround.Y, _maze);
-                _maze.ReplaceCell(coin);
-            }
         }
 
         private void GenerateWall(int minerX, int minerY)
@@ -159,17 +149,33 @@ namespace MazeKz
             this._maze = this.GenerateMazeFullOfEdges(width, height);
             this.GenerateKruskal();
 
-            this.GenerateHero();
+            this.Generate<Coin>(10);
+            this.Generate<Portal>(1);
+            this.Generate<GoldMine>(3);
+            this.Generate<Well>(3);
 
-            this.GenerateCoin();
+            this.GenerateHero();
 
             return this._maze;
         }
 
-        public Maze GenerateKruskal()
+        public Maze GenerateSmartByAntonWithHero(Hero hero, int width = 30, int height = 20)
         {
-            
+            this._maze = this.GenerateMazeFullOfEdges(width, height);
+            _maze.Hero = hero;
+            _maze.Color = (ConsoleColor)_random.Next(1, 8);
 
+            this.GenerateKruskal();
+            this.Generate<Coin>(10);
+            this.Generate<Portal>(1);
+            this.Generate<GoldMine>(3);
+            this.Generate<Well>(3);
+
+            return this._maze;
+        }
+
+        public void GenerateKruskal()
+        {
             // здесь будут храниться наборы (замкнутые области) в виде координат лабиринта и int-значений внутри.
             // для начала нашли все ячейки типа земля.
             var sets = new List<CellWithSetInfo>();
@@ -257,8 +263,6 @@ namespace MazeKz
                 //Console.Clear();
             }
             while (edges.Any());
-
-            return _maze;
         }
 
         private Maze GenerateMazeFullOfEdges(int width, int height)
@@ -291,13 +295,30 @@ namespace MazeKz
         private void GenerateHero()
         {
             var groundCells = _maze.Cells.OfType<Ground>().ToList();
-            // var heroPosition = GetRandomCell(groundCells);
             // находим ячейку с минимальными X и Y
             var minGroundX = groundCells.Select(cell => cell.X).Min();
             var groundCellsWithMinX = groundCells.Where(cell => cell.X == minGroundX);
             var minGroundY = groundCellsWithMinX.Select(cell => cell.Y).Min();
             var heroCell = groundCellsWithMinX.Single(cell => cell.Y == minGroundY);
             _maze.Hero = new Hero(heroCell.X, heroCell.Y, _maze);
+        }
+
+        
+        /// <summary>
+        /// Generates different objects in the maze.
+        /// </summary>
+        /// <typeparam name="T">Type of object (must be of type <see cref="CellBase"/>).</typeparam>
+        /// <param name="quantity">How many objects to create.</param>
+        private void Generate<T>(int quantity) where T : CellBase
+        {
+            var groundCells = _maze.Cells.OfType<Ground>().ToList();
+            for (int i = 0; i < quantity; i++)
+            {
+                var randomGround = GetRandomCell(groundCells);
+                object o = Activator.CreateInstance(typeof(T), new object[] { randomGround.X, randomGround.Y, _maze });
+                var objectInTheCell = (T)o;
+                _maze.ReplaceCell(objectInTheCell);
+            }
         }
     }
 }

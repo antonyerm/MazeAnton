@@ -11,6 +11,9 @@ namespace MazeKz
         public void DrawMaze(Maze maze)
         {
             Console.Clear();
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine("Coins: {0}", maze.Hero.Money);
+            Console.ForegroundColor = maze.Color;
 
             for (int y = 0; y < maze.Height; y++)
             {
@@ -35,6 +38,21 @@ namespace MazeKz
                     if (cell is Coin)
                     {
                         Console.Write("c");
+                    }
+                    else
+                    if (cell is Portal)
+                    {
+                        Console.Write("P");
+                    }
+                    else
+                    if (cell is GoldMine)
+                    {
+                        Console.Write("G");
+                    }
+                    else
+                    if (cell is Well)
+                    {
+                        Console.Write("W");
                     }
 
                 }
