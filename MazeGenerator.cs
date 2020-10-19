@@ -13,30 +13,6 @@ namespace MazeKz
         private Random _random = new Random();
         private Maze _maze;
 
-        public Maze GenerateRandom(int width = 10, int height = 5)
-        {
-            var maze = new Maze
-            {
-                Width = width,
-                Height = height
-            };
-
-            for (int y = 0; y < maze.Height; y++)
-            {
-                for (int x = 0; x < maze.Width; x++)
-                {
-                    var number = _random.Next(1, 4);
-
-                    var cellType = (CellType)number;
-
-                    var cell = new Cell(x, y, cellType);
-                    maze.Cells.Add(cell);
-                }
-            }
-
-            return maze;
-        }
-
         public Maze GenerateSmart(int width = 10, int height = 5)
         {
             //Создали лабиринты полный стен
@@ -46,7 +22,29 @@ namespace MazeKz
             var minerX = 0;
             var minerY = 0;
 
-            List<Cell> cellsAllowToBreak = new List<Cell>();
+            this.GenerateWall(minerX, minerY);
+
+            _maze.Hero = new Hero(0, 0, _maze);
+
+            this.GenerateCoin();
+
+            return _maze;
+        }
+
+        private void GenerateCoin()
+        {
+            var groundCells = _maze.Cells.OfType<Ground>().ToList();
+            for (int i = 0; i < 10; i++)
+            {
+                var randomGround = GetRandomCell(groundCells);
+                var coin = new Coin(randomGround.X, randomGround.Y, _maze);
+                _maze.ReplaceCell(coin);
+            }
+        }
+
+        private void GenerateWall(int minerX, int minerY)
+        {
+            List<CellBase> cellsAllowToBreak = new List<CellBase>();
             do
             {
                 //DrawMaze();
@@ -62,14 +60,14 @@ namespace MazeKz
                 }
 
                 //Выбрать ближайшие к шахтёры ячейки // которые являются стенами и существуют
-                var nearCells = GetNearCells(minerX, minerY, CellType.Wall);
+                var nearCells = GetNearCells<Wall>(minerX, minerY);
                 // пополнили ими cellsAllowToBreak, т.е. всеми существующими вокруг стенными ячейками
                 cellsAllowToBreak.AddRange(nearCells);
                 // исключили из этих стен те, рядом с которыми много земли. Оставили только те, где рядом одна земля,
                 // и кроме того убрали повторяющиеся ячейки
                 cellsAllowToBreak = cellsAllowToBreak
                     .Where(wall =>
-                        GetNearCells(wall.X, wall.Y, CellType.Ground).Count() <= 1)
+                        GetNearCells<Ground>(wall.X, wall.Y).Count() <= 1)
                     .Distinct()
                     .ToList();
 
@@ -79,8 +77,6 @@ namespace MazeKz
                 minerX = randomCell?.X ?? 0;
                 minerY = randomCell?.Y ?? 0;
             } while (cellsAllowToBreak.Any());
-
-            return _maze;
         }
 
         private void DrawMaze()
@@ -91,35 +87,36 @@ namespace MazeKz
             //Thread.Sleep(200);
         }
 
-        private Cell GetRandomCell(List<Cell> nearCells)
+        private CellBase GetRandomCell(IEnumerable<CellBase> nearCells)
         {
             if (!nearCells.Any())
             {
                 return null;
             }
-            var randomIndex = _random.Next(0, nearCells.Count);
-            return nearCells[randomIndex];
+
+            var list = nearCells.ToList();
+            var randomIndex = _random.Next(0, list.Count);
+            return list[randomIndex];
         }
 
-        private List<Cell> GetNearCells(int minerX, int minerY, CellType type)
+        private IEnumerable<CellBase> GetNearCells<T>(int minerX, int minerY) where T : CellBase
         {
-            var nearCells = new List<Cell>()
+            var nearCells = new List<CellBase>()
             {
                 _maze[minerX - 1, minerY],
                 _maze[minerX + 1, minerY],
                 _maze[minerX, minerY + 1],
                 _maze[minerX, minerY - 1],
             };
-            nearCells = nearCells
-                .Where(x => x != null && x.CellType == type)
-                .ToList();
-            return nearCells;
+            var answer = nearCells
+                .Where(x => x != null)
+                .OfType<T>();
+            return answer;
         }
 
         private void BreakWall(int minerX, int minerY)
         {
-            var cell = _maze[minerX, minerY];
-            cell.CellType = CellType.Ground;
+            _maze.ReplaceCell(new Ground(minerX, minerY, _maze));
         }
 
         private Maze GenerateMazeFullWall(int width, int height)
@@ -134,7 +131,7 @@ namespace MazeKz
             {
                 for (int x = 0; x < maze.Width; x++)
                 {
-                    maze.Cells.Add(new Cell(x, y, CellType.Wall));
+                    maze.Cells.Add(new Wall(x, y, maze));
                 }
             }
 
@@ -157,22 +154,34 @@ namespace MazeKz
 
         }
 
-        public Maze GenerateKruskal(int width = 30, int height = 20)
+        public Maze GenerateSmartByAnton(int width = 30, int height = 20)
         {
-            _maze = this.GenerateMazeWithEdges(width, height);
+            this._maze = this.GenerateMazeFullOfEdges(width, height);
+            this.GenerateKruskal();
+
+            this.GenerateHero();
+
+            this.GenerateCoin();
+
+            return this._maze;
+        }
+
+        public Maze GenerateKruskal()
+        {
+            
 
             // здесь будут храниться наборы (замкнутые области) в виде координат лабиринта и int-значений внутри.
             // для начала нашли все ячейки типа земля.
             var sets = new List<CellWithSetInfo>();
-            var CellsWhichAreGround = _maze.Cells.Where(cell => cell.CellType == CellType.Ground);
+            var CellsWhichAreGround = _maze.Cells.OfType<Ground>(); 
             // затем заполнили sets новыми ячейками, для которых взяли из найденных ячеек координаты, а номер набора SetNmber поставив -1
             sets.AddRange(from cell in CellsWhichAreGround
                           select new CellWithSetInfo { X = cell.X, Y = cell.Y, SetNumber = - 1});
             // Нашли грани
-            var edges = new List<Cell>();
-            edges.AddRange(_maze.Cells.Where(cell => cell.CellType == CellType.Wall).ToList());
+            var edges = new List<CellBase>();
+            edges.AddRange(_maze.Cells.OfType<Wall>());
             // Удаляем крестовины, т.е. оставляем только грани, рядом с которыми 1..2 земли 
-            edges = edges.Where(cell => GetNearCells(cell.X, cell.Y, CellType.Ground).Count() == 2).ToList();
+            edges = edges.Where(cell => GetNearCells<Ground>(cell.X, cell.Y).Count() == 2).ToList();
 
             // К этому моменту edges - все грани без крестовин, sets - все пустые поля с инициализированными номерами наборов.
 
@@ -184,7 +193,7 @@ namespace MazeKz
                 // взяли случайную грань, чтобы ее сломать
                 var randomEdgeToBreak = edges[_random.Next(0, edges.Count())];
                 // нашли в окружении грани ячейки типа земля, будeм их объединять в набор
-                var cellsToConnect = GetNearCells(randomEdgeToBreak.X, randomEdgeToBreak.Y, CellType.Ground);
+                var cellsToConnect = GetNearCells<Ground>(randomEdgeToBreak.X, randomEdgeToBreak.Y);
                 // составили список из ячеек sets, где те же ячейки из окружения Edges
                 var cellsToConnectInSets = (from cellFromSets in sets
                                             join cellFromEdges in cellsToConnect
@@ -204,7 +213,7 @@ namespace MazeKz
                         sets.Single(s => s.X == cell.X && s.Y == cell.Y).SetNumber = setsCounter;
                     }
                     // сломать эту грань
-                    _maze[randomEdgeToBreak.X, randomEdgeToBreak.Y].CellType = CellType.Ground;
+                    _maze.ReplaceCell(new Ground(randomEdgeToBreak.X, randomEdgeToBreak.Y, _maze));
                     setsCounter++;
                 }
                 else
@@ -216,7 +225,7 @@ namespace MazeKz
                         {
                             sets.Single(s => s.X == cell.X && s.Y == cell.Y).SetNumber = maxSetNumber;
                         }
-                        _maze[randomEdgeToBreak.X, randomEdgeToBreak.Y].CellType = CellType.Ground;
+                        _maze.ReplaceCell(new Ground(randomEdgeToBreak.X, randomEdgeToBreak.Y, _maze));
                     }
                     else
                     {
@@ -225,7 +234,7 @@ namespace MazeKz
                         {
                             sets.Where(cell => cell.SetNumber == maxSetNumber).ToList().ForEach(c => c.SetNumber = minSetNumber);
                             // сломать эту грань
-                            _maze[randomEdgeToBreak.X, randomEdgeToBreak.Y].CellType = CellType.Ground;
+                            _maze.ReplaceCell(new Ground(randomEdgeToBreak.X, randomEdgeToBreak.Y, _maze));
                         }
                     }
                 }
@@ -252,7 +261,7 @@ namespace MazeKz
             return _maze;
         }
 
-        private Maze GenerateMazeWithEdges(int width, int height)
+        private Maze GenerateMazeFullOfEdges(int width, int height)
         {
             var maze = new Maze
             {
@@ -267,16 +276,28 @@ namespace MazeKz
                     //if y uneven and x uneven then put ground
                     if (y % 2 == 1 && x % 2 == 1)
                     {
-                        maze.Cells.Add(new Cell(x, y, CellType.Ground));
+                        maze.Cells.Add(new Ground(x, y, maze));
                     }
                     else
                     {
-                        maze.Cells.Add(new Cell(x, y, CellType.Wall));
+                        maze.Cells.Add(new Wall(x, y, maze));
                     }
                 }
             }
 
             return maze;
+        }
+
+        private void GenerateHero()
+        {
+            var groundCells = _maze.Cells.OfType<Ground>().ToList();
+            // var heroPosition = GetRandomCell(groundCells);
+            // находим ячейку с минимальными X и Y
+            var minGroundX = groundCells.Select(cell => cell.X).Min();
+            var groundCellsWithMinX = groundCells.Where(cell => cell.X == minGroundX);
+            var minGroundY = groundCellsWithMinX.Select(cell => cell.Y).Min();
+            var heroCell = groundCellsWithMinX.Single(cell => cell.Y == minGroundY);
+            _maze.Hero = new Hero(heroCell.X, heroCell.Y, _maze);
         }
     }
 }

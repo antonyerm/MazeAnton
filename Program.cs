@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MazeKz.Cells;
+using System;
 
 namespace MazeKz
 {
@@ -6,11 +7,8 @@ namespace MazeKz
     {
         static void Main(string[] args)
         {
-            var mazeGenerator = new MazeGenerator();
-            var maze = mazeGenerator.GenerateKruskal(121, 81);
-
-            var draw = new Drawer();
-            draw.DrawMaze(maze);
+            var UiHelper = new ConsoleUiHelper();
+            UiHelper.Play();
         }
     }
 }

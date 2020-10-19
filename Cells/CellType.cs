@@ -9,8 +9,5 @@ namespace MazeKz.Cells
         Wall = 1,
         Ground = 2,
         Coin = 3,
-        WallVertical = 4,   // "|" █
-        WallHorizontal = 5, // "-"
-        WallJoint = 6, // "+"
     }
 }
